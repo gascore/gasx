@@ -22,7 +22,7 @@ func GasFiles(extensions []string) ([]File, error) {
 		return []File{}, err
 	}
 
-	return GasFilesCustomDir(currentDir+"app/", buildExternal, extensions)
+	return GasFilesCustomDir(currentDir+"app/", extensions)
 }
 
 // GasFilesCustomDir find files for builder in directory
@@ -42,7 +42,7 @@ func parseModDir(root string, extensions, already []string) ([]File, error) {
 		}
 	}
 
-	files, err := getGasFilesBody(root, isExternal, extensions)
+	files, err := getGasFilesBody(root, extensions)
 	if err != nil {
 		return files, nil
 	}
@@ -65,13 +65,13 @@ func parseModDir(root string, extensions, already []string) ([]File, error) {
 	return files, nil
 }
 
-func getGasFilesBody(root string, isExternal bool, extensions []string) ([]File, error) {
+func getGasFilesBody(root string, extensions []string) ([]File, error) {
 	var files []File
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		for _, ext := range extensions {
 			if strings.HasSuffix(path, "."+ext) {
-				files = append(files, File{Path: path, IsExternal: isExternal, Extension: ext})
+				files = append(files, File{Path: path, Extension: ext})
 				return nil
 			}
 		}
