@@ -16,22 +16,18 @@ type File struct {
 }
 
 // GasFiles find files for builder in current directory
-func GasFiles(buildExternal bool, extensions []string) ([]File, error) {
+func GasFiles(extensions []string) ([]File, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return []File{}, err
 	}
 
-	return GasFilesCustomDir(currentDir, buildExternal, extensions)
+	return GasFilesCustomDir(currentDir+"app/", buildExternal, extensions)
 }
 
 // GasFilesCustomDir find files for builder in directory
-func GasFilesCustomDir(directory string, buildExternal bool, extensions []string) ([]File, error) {
-	if buildExternal {
-		return parseModDir(directory, buildExternal, extensions, []string{})
-	}
-
-	files, err := getGasFilesBody(directory, false, extensions)
+func GasFilesCustomDir(directory string, extensions []string) ([]File, error) {
+	files, err := getGasFilesBody(directory, extensions)
 	if err != nil {
 		return files, nil
 	}
@@ -39,7 +35,7 @@ func GasFilesCustomDir(directory string, buildExternal bool, extensions []string
 	return files, nil
 }
 
-func parseModDir(root string, isExternal bool, extensions, already []string) ([]File, error) {
+func parseModDir(root string, extensions, already []string) ([]File, error) {
 	for _, alreadyDir := range already {
 		if alreadyDir == root {
 			return []File{}, nil
@@ -59,7 +55,7 @@ func parseModDir(root string, isExternal bool, extensions, already []string) ([]
 	}
 
 	for _, nodeValue := range pkg.NodeMap {
-		newFiles, err := parseModDir(nodeValue.ModDir(), true, extensions, already)
+		newFiles, err := parseModDir(nodeValue.ModDir(), extensions, already)
 		if err != nil {
 			return files, err
 		}
