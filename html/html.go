@@ -1,9 +1,11 @@
 package html
 
 import (
+	"fmt"
 	"bytes"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
+	"github.com/gascore/gasx"
 )
 
 type HTMLCompiler struct {
@@ -20,19 +22,18 @@ func (c *HTMLCompiler) AddOnAttribute(f func(string,string)) {
 }
 
 func (c *HTMLCompiler) runOnAttribute(key,val string) {
-	for _, f := rnage c.onAttribute {
+	for _, f := range c.onAttribute {
 		f(key,val)
 	}
 }
 
-func (c *HTMLCompiler) Block() builder.BlockCompiler {
-	return func(info *BlockInfo) (string, error) {
+func (c *HTMLCompiler) Block() gasx.BlockCompiler {
+	return func(info *gasx.BlockInfo) (string, error) {
 		if info.Name != "html" && info.Name != "htmlF" {
 			return info.FileBytes, nil
 		}
 
-		buf := bytes.NewBufferString(info.FileBytes)
-		nodes, err := html.ParseFragment(reader, &html.Node{
+		nodes, err := html.ParseFragment(bytes.NewBufferString(info.Value), &html.Node{
 			Type:     html.ElementNode,
 			Data:     "div",
 			DataAtom: atom.Div,
@@ -53,9 +54,9 @@ func (c *HTMLCompiler) Block() builder.BlockCompiler {
 		out = "gas.CL("+out+")"
 
 		if info.Name == "htmlF" {
-			return "func() []interface{return "+out+"}"
+			return "func() []interface{return "+out+"}", nil
 		}
 
-		return out
+		return out, nil
 	}
 }

@@ -2,6 +2,7 @@ package acss
 
 import (
 	"regexp"
+	"strings"
 )
 
 var styleRgxp = regexp.MustCompile(`([a-zA-Z]*)\((.*?)\)(:[a-z]|)(--([a-z]*)|)`)

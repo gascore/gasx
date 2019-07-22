@@ -8,6 +8,9 @@ import (
 	"golang.org/x/net/html"
 )
 
+var trim = strings.TrimSpace
+var hasPrefix = strings.HasPrefix
+
 func executeEl(t *html.Node) (*ElementInfo, string, error) {
 	if t.Type == html.CommentNode {
 		return &ElementInfo{IsComment:true}, "/*" + t.Data + "*/", nil
@@ -308,4 +311,16 @@ func parseText(in string, i int, buf string) string {
 	default:
 		return buf
 	}
+}
+
+func stringNotEmpty(a string) bool {
+	cleared := trim(a)
+	return len(cleared) != 0
+}
+
+func removeInArr(a []byte, i int) string {
+	copy(a[i:], a[i+1:]) // Shift a[i+1:] left one index
+	a[len(a)-1] = 0      // Erase last element (write zero value)
+	a = a[:len(a)-1]     // Truncate slice
+	return string(a)
 }

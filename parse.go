@@ -34,7 +34,7 @@ func (builder *Builder) ParseFiles(files []File) error {
 
 				valueStart = match[4]
 				valueEnd = match[5]
-				value = fileBody[valueStart:valueEnd]
+				value = strings.TrimSpace(fileBody[valueStart:valueEnd])
 			)
 
 			newVal, err := builder.RenderBlock(&BlockInfo{
