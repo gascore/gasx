@@ -11,7 +11,7 @@ import (
 var trim = strings.TrimSpace
 var hasPrefix = strings.HasPrefix
 
-func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, error) {
+func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) {
 	if t.Type == html.CommentNode {
 		return &ElementInfo{IsComment:true}, "/*" + t.Data + "*/", nil
 	}
@@ -42,7 +42,7 @@ func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, erro
 					return false, errors.New("ERROR: invalid template syntax: 'name' attribute undefined")
 				}
 
-				templateBody, err := genChildes(getElChildes(c), nil, compiler)
+				templateBody, err := genChildes(getElChildes(c), nil, handler)
 				if err != nil {
 					return false, err
 				}
@@ -58,7 +58,7 @@ func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, erro
 
 			slotAttr := getXAttr(c.Attr, "slot")
 			if len(slotAttr) != 0 {
-				_, cOut, err := executeEl(c, compiler)
+				_, cOut, err := executeEl(c, handler)
 				if err != nil {
 					return false, err
 				}
@@ -74,7 +74,7 @@ func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, erro
 			return true, nil
 		}
 
-		body, err := genChildes(getElChildes(t), beforeHandler, compiler)
+		body, err := genChildes(getElChildes(t), beforeHandler, handler)
 		if err != nil {
 			return nil, "", err
 		}
@@ -131,7 +131,7 @@ func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, erro
 
 		var switchOut string
 		beforeHandler := func(c *html.Node) (bool, error) {
-			attrs, cOut, err := executeEl(c, compiler)
+			attrs, cOut, err := executeEl(c, handler)
 			if err != nil {
 				return false, err
 			}
@@ -155,7 +155,7 @@ func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, erro
 			return false, nil
 		}
 
-		_, err := genChildes(getElChildes(t), beforeHandler, compiler)
+		_, err := genChildes(getElChildes(t), beforeHandler, handler)
 		if err != nil {
 			return nil, "", err
 		}
@@ -163,10 +163,10 @@ func executeEl(t *html.Node, compiler *HTMLCompiler) (*ElementInfo, string, erro
 		return &ElementInfo{Tag:"g-switch"}, "func()interface{}{\n\tswitch "+runAttribute+" {\n"+switchOut+"}\n\treturn nil\n}()", nil
 	}
 
-	elementInfo := GetElementInfo(t.Data, t.Attr, compiler)
+	elementInfo := GetElementInfo(t.Data, t.Attr, handler)
 	tBody := elementInfo.BuildBody()
 
-	childesOut, err := genChildes(getElChildes(t), nil, compiler)
+	childesOut, err := genChildes(getElChildes(t), nil, handler)
 	if err != nil {
 		return nil, "", err
 	}
@@ -189,7 +189,7 @@ func getElChildes(t *html.Node) []*html.Node {
 	return childes
 }
 
-func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, error), compiler *HTMLCompiler) (string, error) {
+func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, error), handler HTMLHandler) (string, error) {
 	var haveIf bool
 	
 	var logicBlock string // if, switch
@@ -215,7 +215,7 @@ func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, erro
 			}
 		}
 
-		info, cOut, err := executeEl(c, compiler)
+		info, cOut, err := executeEl(c, handler)
 		if err != nil {
 			return "", err
 		}

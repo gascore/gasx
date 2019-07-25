@@ -11,6 +11,7 @@ import (
 )
 
 type Builder struct {
+	LockFile *LockFile
 	BlockCompilers []BlockCompiler
 }
 
@@ -19,6 +20,7 @@ type BlockInfo struct {
 	Value     string
 	FileInfo  File
 	FileBytes string
+	LockFile  *LockFile
 }
 
 type BlockCompiler func(*BlockInfo) (string, error)
@@ -36,17 +38,17 @@ func (builder *Builder) RenderBlock(block *BlockInfo) (string, error) {
 	return block.Value, nil
 }
 
-func (builder *Builder) Log(msg string) {
+func Log(msg string) {
 	fmt.Println(color.BlueString("Builder:") + " " + msg)
 }
 
-func (builder *Builder) Must(err error) {
+func Must(err error) {
 	if err != nil {
-		builder.ErrorMsg(err.Error())
+		ErrorMsg(err.Error())
 	}
 }
 
-func (builder *Builder) ErrorMsg(msg string) {
+func ErrorMsg(msg string) {
 	fmt.Println(color.RedString("ERROR") + ": " + msg)
 	panic(msg)
 }
@@ -55,20 +57,20 @@ func (builder *Builder) RunCommand(command string) {
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	builder.Must(cmd.Run())
+	Must(cmd.Run())
 }
 
 func (builder *Builder) NewFile(path, body string) {
-	builder.Must(ioutil.WriteFile(path, []byte(body), 0644))
+	Must(ioutil.WriteFile(path, []byte(body), 0644))
 }
 
 func (builder *Builder) CopyFile(pathA, pathB string) {
 	file, err := ioutil.ReadFile(pathA)
-	builder.Must(err)
+	Must(err)
 
 	err = os.Remove(pathB)
 	if err != nil && !os.IsNotExist(err) {
-		builder.Must(err)
+		Must(err)
 	}
 
 	builder.NewFile(pathB, string(file))
@@ -76,12 +78,12 @@ func (builder *Builder) CopyFile(pathA, pathB string) {
 
 func (builder *Builder) ClearDir(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		builder.Must(os.Mkdir(dir, os.ModePerm))
+		Must(os.Mkdir(dir, os.ModePerm))
 	} else {
-		builder.Must(os.RemoveAll(dir))
+		Must(os.RemoveAll(dir))
 	}
 }
 
 func (builder *Builder) CopyDir(dirA, dirB string) {
-	builder.Must(copyPkg.Copy(dirA, dirB))
+	Must(copyPkg.Copy(dirA, dirB))
 }

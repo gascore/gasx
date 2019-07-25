@@ -3,11 +3,13 @@ package acss
 import (
 	"regexp"
 	"strings"
+	"github.com/gascore/gasx"
 )
 
 var styleRgxp = regexp.MustCompile(`([a-zA-Z]*)\((.*?)\)(:[a-z]|)(--([a-z]*)|)`)
 
 type Generator struct {
+	LockFile *gasx.LockFile
 	Styles string
 
 	Exceptions []string
@@ -15,13 +17,17 @@ type Generator struct {
 	Custom map[string]string
 }
 
-func (g *Generator) OnAttribute() func(string,string) {
-	return func(key, val string) {
+func (g *Generator) OnAttribute() func(string,string,*gasx.BlockInfo) {
+	if g.LockFile.BuildExternal {
+		g.LockFile.Body["acss"] = ""
+	}
+	
+	generated := make(map[string]bool) 
+
+	return func(key, val string, info *gasx.BlockInfo) {
 		if key != "class" {
 			return
 		}
-
-		generated := make(map[string]bool)
 
 		for _, class := range styleRgxp.FindAllString(val, -1) {
 			if generated[class] {
@@ -40,6 +46,9 @@ func (g *Generator) OnAttribute() func(string,string) {
 			}
 
 			g.Styles += classOut
+			if info.FileInfo.IsExternal {
+				g.LockFile.Body["acss"] += classOut
+			}
 		}
 	}
 }
@@ -96,6 +105,14 @@ func (g *Generator) buildClass(class string) string {
 	}
 
 	return styleOut
+}
+
+func (g *Generator) GetStyles() string {
+	if !g.LockFile.BuildExternal {
+		return g.Styles + "\n" + g.LockFile.Body["acss"]
+	}
+
+	return g.Styles
 }
 
 func ClearClass(class string) string {

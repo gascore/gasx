@@ -10,7 +10,7 @@ import (
 )
 
 type HTMLCompiler struct {
-	onAttribute []func(key, val string)
+	onAttribute []func(key, val string, info *gasx.BlockInfo)
 	// TODO: Add onElement, on......
 }
 
@@ -18,13 +18,18 @@ func NewCompiler() *HTMLCompiler {
 	return &HTMLCompiler{}
 }
 
-func (c *HTMLCompiler) AddOnAttribute(f func(string, string)) {
+func (c *HTMLCompiler) AddOnAttribute(f func(string, string, *gasx.BlockInfo)) {
 	c.onAttribute = append(c.onAttribute, f)
 }
 
-func (c *HTMLCompiler) runOnAttribute(key, val string) {
-	for _, f := range c.onAttribute {
-		f(key, val)
+type HTMLHandler struct {
+	info *gasx.BlockInfo
+	c *HTMLCompiler
+}
+
+func (handler *HTMLHandler) runOnAttribute(key, val string) {
+	for _, f := range handler.c.onAttribute {
+		f(key, val, handler.info)
 	}
 }
 
@@ -43,8 +48,13 @@ func (c *HTMLCompiler) Block() gasx.BlockCompiler {
 			return "", fmt.Errorf("error while parsing html block: %s", err.Error())
 		}
 
+		handler := HTMLHandler{
+			info: info,
+			c: c,
+		}
+
 		if info.Name == "htmlEl" {
-			_, compiledNode, err := executeEl(nodes[0], c)
+			_, compiledNode, err := executeEl(nodes[0], handler)
 			if err != nil {
 				return "", fmt.Errorf("error while compiling html node: %s", err.Error())
 			}
@@ -52,7 +62,7 @@ func (c *HTMLCompiler) Block() gasx.BlockCompiler {
 			return compiledNode, nil
 		}
 
-		out, err := genChildes(nodes, nil, c)
+		out, err := genChildes(nodes, nil, handler)
 		if err != nil {
 			return "", fmt.Errorf("error while compiling html nodes")
 		}
