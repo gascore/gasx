@@ -1,11 +1,11 @@
 package gasx
 
 import (
-	"go/build"
 	"os"
-	"path/filepath"
 	"strings"
-
+	"go/build"
+	"path/filepath"
+	
 	"github.com/visualfc/fastmod"
 )
 
@@ -22,17 +22,12 @@ func GasFiles(extensions []string) ([]File, error) {
 		return []File{}, err
 	}
 
-	return GasFilesCustomDir(currentDir+"app/", extensions)
+	return GasFilesCustomDir(currentDir+"/app/", extensions)
 }
 
 // GasFilesCustomDir find files for builder in directory
 func GasFilesCustomDir(directory string, extensions []string) ([]File, error) {
-	files, err := getGasFilesBody(directory, extensions)
-	if err != nil {
-		return files, nil
-	}
-
-	return files, nil
+	return parseModDir(directory, extensions, []string{})
 }
 
 func parseModDir(root string, extensions, already []string) ([]File, error) {

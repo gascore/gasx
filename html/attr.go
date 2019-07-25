@@ -152,7 +152,7 @@ func (info *ElementInfo) RenderIsPointer() string {
 }
 
 // GetElementInfo generate ElementInfo from html.Element.Attr
-func GetElementInfo(tag string, attrs []html.Attribute) *ElementInfo {
+func GetElementInfo(tag string, attrs []html.Attribute, compiler *HTMLCompiler) *ElementInfo {
 	info := &ElementInfo{
 		Tag: tag,
 		Handlers: make(map[string]string),
@@ -163,6 +163,8 @@ func GetElementInfo(tag string, attrs []html.Attribute) *ElementInfo {
 	for _, attr := range attrs {
 		aKey := attr.Key
 		aVal := attr.Val
+
+		compiler.runOnAttribute(aKey, aVal)
 
 		if hasPrefix(aKey, gOn) || hasPrefix(aKey, gOnAlt) {
 			var current string

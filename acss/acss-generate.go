@@ -13,7 +13,7 @@ func GenerateStyleForClass(class string, custom map[string]string) string {
 	}
 
 	bi := strings.Index(class, "(")
-	value := class[bi+1 : strings.Index(class, ")")]
+	value := strings.Replace(class[bi+1:strings.Index(class, ")")], ",", " ", -1)
 	class = class[:bi]
 
 	if len(custom[value]) != 0 {

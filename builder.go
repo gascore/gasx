@@ -1,10 +1,11 @@
 package gasx
 
 import (
-	"os"
 	"fmt"
-	"os/exec"
 	"io/ioutil"
+	"os"
+	"os/exec"
+
 	"github.com/fatih/color"
 	copyPkg "github.com/otiai10/copy"
 )
@@ -14,9 +15,9 @@ type Builder struct {
 }
 
 type BlockInfo struct {
-	Name string
-	Value string
-	FileInfo File
+	Name      string
+	Value     string
+	FileInfo  File
 	FileBytes string
 }
 
@@ -75,12 +76,12 @@ func (builder *Builder) CopyFile(pathA, pathB string) {
 
 func (builder *Builder) ClearDir(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		builder.Must(os.MkdirAll(dir, os.ModePerm))
+		builder.Must(os.Mkdir(dir, os.ModePerm))
 	} else {
 		builder.Must(os.RemoveAll(dir))
 	}
 }
 
 func (builder *Builder) CopyDir(dirA, dirB string) {
-	builder.Must(copyPkg.Copy("static", "dist"))
+	builder.Must(copyPkg.Copy(dirA, dirB))
 }
