@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"net/http"
 
 	"github.com/fatih/color"
 	copyPkg "github.com/otiai10/copy"
@@ -53,18 +54,18 @@ func ErrorMsg(msg string) {
 	panic(msg)
 }
 
-func (builder *Builder) RunCommand(command string) {
+func RunCommand(command string) {
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	Must(cmd.Run())
 }
 
-func (builder *Builder) NewFile(path, body string) {
+func NewFile(path, body string) {
 	Must(ioutil.WriteFile(path, []byte(body), 0644))
 }
 
-func (builder *Builder) CopyFile(pathA, pathB string) {
+func CopyFile(pathA, pathB string) {
 	file, err := ioutil.ReadFile(pathA)
 	Must(err)
 
@@ -73,10 +74,10 @@ func (builder *Builder) CopyFile(pathA, pathB string) {
 		Must(err)
 	}
 
-	builder.NewFile(pathB, string(file))
+	NewFile(pathB, string(file))
 }
 
-func (builder *Builder) ClearDir(dir string) {
+func ClearDir(dir string) {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		Must(os.Mkdir(dir, os.ModePerm))
 	} else {
@@ -84,6 +85,16 @@ func (builder *Builder) ClearDir(dir string) {
 	}
 }
 
-func (builder *Builder) CopyDir(dirA, dirB string) {
+func CopyDir(dirA, dirB string) {
 	Must(copyPkg.Copy(dirA, dirB))
+}
+
+func ServeDir(port, dir string) *http.Server {
+	srv := &http.Server{Addr: port, Handler: http.FileServer(http.Dir(dir))}
+	
+	go func() {
+		Must(srv.ListenAndServe())
+	}()
+
+	return srv
 }
