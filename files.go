@@ -40,12 +40,6 @@ func GasFilesCustomDir(directory string, extensions []string, buildExternal bool
 }
 
 func parseModDir(root string, extensions, already []string, isExternal bool) ([]File, error) {
-	for _, alreadyDir := range already {
-		if alreadyDir == root {
-			return []File{}, nil
-		}
-	}
-
 	files, err := getGasFilesBody(root, extensions, isExternal)
 	if err != nil {
 		return files, nil
@@ -59,6 +53,15 @@ func parseModDir(root string, extensions, already []string, isExternal bool) ([]
 	}
 
 	for _, nodeValue := range pkg.NodeMap {
+		if inArray(nodeValue.ModDir(), already) {
+			continue
+		}
+
+		// ignore folder if no ".gasbuildable" file
+		if _, err := os.Stat(nodeValue.ModDir() + "/.gasbuildable"); os.IsNotExist(err) {
+			continue
+		}
+
 		newFiles, err := parseModDir(nodeValue.ModDir(), extensions, already, true)
 		if err != nil {
 			return files, err
@@ -87,4 +90,14 @@ func getGasFilesBody(root string, extensions []string, isExternal bool) ([]File,
 	}
 
 	return files, err
+}
+
+func inArray(a string, arr []string) bool {
+	for _, el := range arr {
+		if el == a {
+			return true
+		}
+	}
+
+	return false
 }
