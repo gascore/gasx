@@ -2,33 +2,33 @@ package html
 
 import (
 	"strings"
+
 	"golang.org/x/net/html"
 )
 
 const (
-	gDirs    = "g-"
+	gDirs = "g-"
 
-	gOn      = gDirs+"on:"
-	gOnAlt   = "@"
+	gOn    = gDirs + "on:"
+	gOnAlt = "@"
 
-	gBind    = gDirs+"bind:"
+	gBind    = gDirs + "bind:"
 	gBindAlt = ":"
 
-	gRef     = gDirs+"ref"
-	gWatcher = gDirs+"watch"
+	gRef = gDirs + "ref"
 
-	gHTML    = gDirs+"html"
+	gHTML = gDirs + "html"
 
-	gFor     = gDirs+"for"
+	gFor = gDirs + "for"
 
-	gIf      = gDirs+"if"
-	gElseIf  = gDirs+"else-if"
-	gElse    = gDirs+"else"
-	
-	gCase    	 = gDirs+"case"
-	gCaseDefault = gDirs+"default"
+	gIf     = gDirs + "if"
+	gElseIf = gDirs + "else-if"
+	gElse   = gDirs + "else"
 
-	gIsPointer = gDirs+"pointer"
+	gCase        = gDirs + "case"
+	gCaseDefault = gDirs + "default"
+
+	gIsPointer = gDirs + "pointer"
 )
 
 func getXAttr(attrs []html.Attribute, x string) string {
@@ -42,26 +42,25 @@ func getXAttr(attrs []html.Attribute, x string) string {
 
 type ElementInfo struct {
 	Tag string
-	
+
 	IsComment bool
 
-	Attrs    map[string]string
-	
+	Attrs map[string]string
+
 	Handlers map[string]string
 	Binds    map[string]string
 
-	Watcher string
 	Ref string
 
 	HTMLRender string
 
 	ForData string
-	
+
 	IfData     string
 	ElseData   bool
 	ElseIfData string
 
-	SwitchData 		string
+	SwitchData      string
 	CaseData        string
 	CaseDefaultData bool
 
@@ -70,16 +69,7 @@ type ElementInfo struct {
 
 // BuildBody return string with gas element strucutre
 func (info *ElementInfo) BuildBody() string {
-	return `&gas.E{Tag:"` + info.Tag + `", ` + info.RenderBinds() + info.RenderHandlers() + info.RenderAttrs() + info.RenderHTMLDir() + info.RenderWatcher() + info.RenderRef() + info.RenderIsPointer() + `},`
-}
-
-// RenderWatcher return Watcher for Element
-func (info *ElementInfo) RenderWatcher() string {
-	if len(info.Watcher) == 0 {
-		return ""
-	}
-
-	return `Watcher: "`+info.Watcher+`",`
+	return `&gas.E{Tag:"` + info.Tag + `", ` + info.RenderHandlers() + info.RenderAttrs() + info.RenderHTMLDir() + info.RenderRef() + info.RenderIsPointer() + `},`
 }
 
 // RenderRef return RefName for Element
@@ -88,21 +78,7 @@ func (info *ElementInfo) RenderRef() string {
 		return ""
 	}
 
-	return `RefName: "`+info.Ref+`",`
-}
-
-// RenderBinds return Binds for Element
-func (info *ElementInfo) RenderBinds() string {
-	if len(info.Binds) == 0 {
-		return ""
-	}
-
-	var out string
-	for key, val := range info.Binds {
-		out += `"`+key+`": func() string { return (`+val+`)},`
-	}
-
-	return `Binds: map[string]gas.Bind{`+out+`},`
+	return `RefName: "` + info.Ref + `",`
 }
 
 // RenderHandlers generate Handlers for Element
@@ -113,24 +89,28 @@ func (info *ElementInfo) RenderHandlers() string {
 
 	var out string
 	for key, val := range info.Handlers {
-		out += `"`+key+`": func(e gas.Object) {`+val+`},`
+		out += `"` + key + `": func(e gas.Event) {` + val + `},`
 	}
 
-	return `Handlers: map[string]gas.Handler{`+out+`},`
+	return `Handlers: map[string]gas.Handler{` + out + `},`
 }
 
 // RenderAttrs generate Attrs for Element
 func (info *ElementInfo) RenderAttrs() string {
-	if len(info.Attrs) == 0 {
+	if len(info.Attrs) == 0 && len(info.Binds) == 0 {
 		return ""
 	}
 
 	var out string
 	for key, val := range info.Attrs {
-		out += `"`+key+`": "`+val+`",`
+		out += `"` + key + `": "` + val + `",`
 	}
 
-	return `Attrs: map[string]string{`+out+`},`
+	for key, val := range info.Binds {
+		out += `"` + key + `": ` + val + `,`
+	}
+
+	return `Attrs: func() map[string]string { return map[string]string{` + out + `} },`
 }
 
 // RenderHTMLDir generate HTML directive for Element
@@ -154,10 +134,10 @@ func (info *ElementInfo) RenderIsPointer() string {
 // GetElementInfo generate ElementInfo from html.Element.Attr
 func GetElementInfo(tag string, attrs []html.Attribute, handler HTMLHandler) *ElementInfo {
 	info := &ElementInfo{
-		Tag: tag,
+		Tag:      tag,
 		Handlers: make(map[string]string),
-		Binds: make(map[string]string),
-		Attrs: make(map[string]string),
+		Binds:    make(map[string]string),
+		Attrs:    make(map[string]string),
 	}
 
 	for _, attr := range attrs {
@@ -193,8 +173,6 @@ func GetElementInfo(tag string, attrs []html.Attribute, handler HTMLHandler) *El
 		switch aKey {
 		case gRef:
 			info.Ref = aVal
-		case gWatcher:
-			info.Watcher = aVal
 		case gFor:
 			if !strings.Contains(aVal, "=") {
 				aVal = "key, val := " + aVal

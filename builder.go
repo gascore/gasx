@@ -5,14 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"net/http"
 
 	"github.com/fatih/color"
 	copyPkg "github.com/otiai10/copy"
 )
 
 type Builder struct {
-	LockFile *LockFile
+	LockFile       *LockFile
 	BlockCompilers []BlockCompiler
 }
 
@@ -87,14 +86,4 @@ func ClearDir(dir string) {
 
 func CopyDir(dirA, dirB string) {
 	Must(copyPkg.Copy(dirA, dirB))
-}
-
-func ServeDir(port, dir string) *http.Server {
-	srv := &http.Server{Addr: port, Handler: http.FileServer(http.Dir(dir))}
-	
-	go func() {
-		Must(srv.ListenAndServe())
-	}()
-
-	return srv
 }

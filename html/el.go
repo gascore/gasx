@@ -13,7 +13,7 @@ var hasPrefix = strings.HasPrefix
 
 func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) {
 	if t.Type == html.CommentNode {
-		return &ElementInfo{IsComment:true}, "/*" + t.Data + "*/", nil
+		return &ElementInfo{IsComment: true}, "/*" + t.Data + "*/", nil
 	}
 
 	if t.Type != html.ElementNode {
@@ -100,9 +100,9 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 					continue
 				}
 
-				attrsString += `"`+attr.Key+`": "`+attr.Val+`",`
+				attrsString += `"` + attr.Key + `": "` + attr.Val + `",`
 			}
-			external += "Attrs: map[string]string{"+attrsString+"},"
+			external += "Attrs: func() map[string]string { return map[string]string {" + attrsString + "} },"
 		}
 
 		if len(external) > 0 {
@@ -114,15 +114,15 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 			out = out[:len(out)-1] + external + "})"
 		}
 
-		return &ElementInfo{Tag:"e"}, out, nil
+		return &ElementInfo{Tag: "e"}, out, nil
 	case "g-slot":
 		name := getXAttr(t.Attr, "name")
 		if len(name) == 0 {
 			return nil, "", errors.New("slot name is undefined")
 		}
-		return &ElementInfo{Tag:"g-slot"}, `e.Slots["` + name + `"]`, nil
+		return &ElementInfo{Tag: "g-slot"}, `e.Slots["` + name + `"]`, nil
 	case "g-body":
-		return &ElementInfo{Tag:"g-body"}, `gas.NE(&gas.E{}, e.Compile)`, nil
+		return &ElementInfo{Tag: "g-body"}, `gas.NE(&gas.E{}, e.Compile)`, nil
 	case "g-switch":
 		runAttribute := getXAttr(t.Attr, "run")
 		if len(runAttribute) == 0 {
@@ -145,11 +145,11 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 			}
 
 			if len(attrs.CaseData) != 0 {
-				switchOut += "case "+attrs.CaseData+": \n\treturn "+cOut+"\n"
+				switchOut += "case " + attrs.CaseData + ": \n\treturn " + cOut + "\n"
 			}
 
 			if attrs.CaseDefaultData {
-				switchOut += "default: \n\treturn "+cOut+"\n"
+				switchOut += "default: \n\treturn " + cOut + "\n"
 			}
 
 			return false, nil
@@ -160,7 +160,7 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 			return nil, "", err
 		}
 
-		return &ElementInfo{Tag:"g-switch"}, "func()interface{}{\n\tswitch "+runAttribute+" {\n"+switchOut+"}\n\treturn nil\n}()", nil
+		return &ElementInfo{Tag: "g-switch"}, "func()interface{}{\n\tswitch " + runAttribute + " {\n" + switchOut + "}\n\treturn nil\n}()", nil
 	}
 
 	elementInfo := GetElementInfo(t.Data, t.Attr, handler)
@@ -191,14 +191,14 @@ func getElChildes(t *html.Node) []*html.Node {
 
 func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, error), handler HTMLHandler) (string, error) {
 	var haveIf bool
-	
+
 	var logicBlock string // if, switch
 	var mainBlock string
-	
+
 	closeLogicBlock := func() {
 		logicBlock = "func()interface{} {\n" + logicBlock + "\nreturn nil\n}(),"
 		mainBlock = logicBlock + mainBlock
-		
+
 		logicBlock = ""
 		haveIf = false
 	}
@@ -234,7 +234,7 @@ func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, erro
 		} else {
 			needComma = !info.IsComment
 
-			switch{
+			switch {
 			case len(info.IfData) != 0:
 				if haveIf {
 					closeLogicBlock()
@@ -304,7 +304,7 @@ func parseText(in string, i int, buf string) string {
 	s3 := in[closeI+2:] // will be edited
 
 	s2 := in[i : closeI+2] // editing now
-	s2 = s2[2:len(s2)-2]   // remove first and last 2 chars "{{" and "}}"
+	s2 = s2[2 : len(s2)-2] // remove first and last 2 chars "{{" and "}}"
 
 	buf = buf + "`" + trim(s1) + "`," + s2 + ", "
 
