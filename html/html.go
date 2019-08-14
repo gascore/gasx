@@ -3,6 +3,7 @@ package html
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/gascore/gasx"
 	"golang.org/x/net/html"
@@ -24,7 +25,7 @@ func (c *HTMLCompiler) AddOnAttribute(f func(string, string, *gasx.BlockInfo)) {
 
 type HTMLHandler struct {
 	info *gasx.BlockInfo
-	c *HTMLCompiler
+	c    *HTMLCompiler
 }
 
 func (handler *HTMLHandler) runOnAttribute(key, val string) {
@@ -50,16 +51,7 @@ func (c *HTMLCompiler) Block() gasx.BlockCompiler {
 
 		handler := HTMLHandler{
 			info: info,
-			c: c,
-		}
-
-		if info.Name == "htmlEl" {
-			_, compiledNode, err := executeEl(nodes[0], handler)
-			if err != nil {
-				return "", fmt.Errorf("error while compiling html node: %s", err.Error())
-			}
-
-			return compiledNode, nil
+			c:    c,
 		}
 
 		out, err := genChildes(nodes, nil, handler)
@@ -67,9 +59,12 @@ func (c *HTMLCompiler) Block() gasx.BlockCompiler {
 			return "", fmt.Errorf("error while compiling html nodes")
 		}
 
-		out = "gas.CL(" + out + ")"
+		if info.Name == "htmlEl" { // $htmlEl
+			return strings.TrimSuffix(out, ","), nil
+		}
 
-		if info.Name == "htmlF" {
+		out = "gas.CL(" + out + ")" // $html
+		if info.Name == "htmlF" {   // $htmlF
 			return "func() []interface{} {return " + out + "}", nil
 		}
 

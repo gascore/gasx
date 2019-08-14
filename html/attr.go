@@ -110,7 +110,7 @@ func (info *ElementInfo) RenderAttrs() string {
 		out += `"` + key + `": ` + val + `,`
 	}
 
-	return `Attrs: func() map[string]string { return map[string]string{` + out + `} },`
+	return `Attrs: func() gas.Map { return gas.Map{` + out + `} },`
 }
 
 // RenderHTMLDir generate HTML directive for Element

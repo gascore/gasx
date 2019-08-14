@@ -2,13 +2,13 @@ package html
 
 import (
 	"fmt"
-	"time"
-	"strings"
 	"math/rand"
+	"strings"
+	"time"
 )
 
 func returnOutStatic(out string) string {
-	return "`" + out + "`"
+	return "`" + strings.Replace(out, "\n", "", -1) + "`"
 }
 
 func returnOutText(out string) string {

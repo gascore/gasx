@@ -102,7 +102,7 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 
 				attrsString += `"` + attr.Key + `": "` + attr.Val + `",`
 			}
-			external += "Attrs: func() map[string]string { return map[string]string {" + attrsString + "} },"
+			external += "Attrs: func() gas.Map { return gas.Map {" + attrsString + "} },"
 		}
 
 		if len(external) > 0 {
@@ -190,15 +190,16 @@ func getElChildes(t *html.Node) []*html.Node {
 }
 
 func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, error), handler HTMLHandler) (string, error) {
-	var haveIf bool
-
-	var logicBlock string // if, switch
-	var mainBlock string
+	var (
+		haveIf     bool
+		logicBlock string // if, else, else if
+		mainBlock  string
+	)
 
 	closeLogicBlock := func() {
-		logicBlock = "func()interface{} {\n" + logicBlock + "\nreturn nil\n}(),"
-		mainBlock = logicBlock + mainBlock
+		logicBlock = " func()interface{} { " + logicBlock + "; return nil }(),"
 
+		mainBlock = logicBlock + mainBlock
 		logicBlock = ""
 		haveIf = false
 	}
@@ -240,7 +241,7 @@ func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, erro
 					closeLogicBlock()
 				}
 
-				logicBlock = "if " + info.IfData + " {\n\treturn " + cOut + "\n}"
+				logicBlock = "if " + info.IfData + " { return " + cOut + " }"
 				haveIf = true
 				continue
 			case len(info.ElseIfData) != 0:
@@ -248,14 +249,14 @@ func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, erro
 					return "", errors.New("invalid g-else-if: no g-if before")
 				}
 
-				logicBlock += " else if " + info.ElseIfData + " {\n\treturn " + cOut + "\n}"
+				logicBlock += " else if " + info.ElseIfData + " { return " + cOut + " }"
 				continue
 			case info.ElseData:
 				if !haveIf {
 					return "", errors.New("invalid g-else: no g-if before")
 				}
 
-				logicBlock += " else {\n\treturn " + cOut + "\n}"
+				logicBlock += " else { return " + cOut + " }"
 
 				closeLogicBlock()
 				continue
@@ -273,7 +274,7 @@ func genChildes(childes []*html.Node, beforeHandler func(*html.Node) (bool, erro
 	}
 
 	if len(logicBlock) != 0 && haveIf {
-		logicBlock = "func()interface{} {\n" + logicBlock + "\nreturn nil\n}(),"
+		logicBlock = "func()interface{} { " + logicBlock + "; return nil }(),"
 		mainBlock = mainBlock + logicBlock
 	}
 
