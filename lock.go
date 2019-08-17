@@ -10,6 +10,7 @@ import (
 
 var jsonWithTime = jsontime.ConfigWithCustomTimeFormat
 
+// LockFile lockfile using for storing data about external files
 type LockFile struct {
 	fileName      string
 	BuildExternal bool
@@ -48,7 +49,7 @@ func (l *LockFile) Save() error {
 		return err
 	}
 
-	if exists(l.fileName) {
+	if Exists(l.fileName) {
 		err := os.Remove(l.fileName)
 		if err != nil {
 			return err
@@ -71,13 +72,4 @@ func (l *LockFile) Save() error {
 	}
 
 	return nil
-}
-
-func exists(name string) bool {
-	if _, err := os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-	}
-	return true
 }

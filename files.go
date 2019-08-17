@@ -9,6 +9,7 @@ import (
 	"github.com/visualfc/fastmod"
 )
 
+// File information about file
 type File struct {
 	Path       string
 	Extension  string
@@ -53,7 +54,7 @@ func parseModDir(root string, extensions, already []string, isExternal bool) ([]
 	}
 
 	for _, nodeValue := range pkg.NodeMap {
-		if inArray(nodeValue.ModDir(), already) {
+		if InArrayString(nodeValue.ModDir(), already) {
 			continue
 		}
 
@@ -90,14 +91,4 @@ func getGasFilesBody(root string, extensions []string, isExternal bool) ([]File,
 	}
 
 	return files, err
-}
-
-func inArray(a string, arr []string) bool {
-	for _, el := range arr {
-		if el == a {
-			return true
-		}
-	}
-
-	return false
 }
