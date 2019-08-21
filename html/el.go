@@ -2,7 +2,6 @@ package html
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -12,6 +11,8 @@ var trim = strings.TrimSpace
 var hasPrefix = strings.HasPrefix
 
 func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) {
+	handler.runOnNode(t)
+
 	if t.Type == html.CommentNode {
 		return &ElementInfo{IsComment: true}, "/*" + t.Data + "*/", nil
 	}
@@ -21,39 +22,17 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 	}
 
 	switch t.Data {
-	// e, g-slot, g-body -- tags for components-based programming
 	case "e":
-		runAttribute := getXAttr(t.Attr, "run")
-		if len(runAttribute) == 0 {
-			return nil, "", fmt.Errorf("invalid external component: no 'run' attribute")
+		info := GetElementInfo("e", t.Attr, handler)
+		out := info.Attrs["run"]
+		if out == "" {
+			return nil, "", errors.New("invalid \"e\" element: no \"run\" attribute")
 		}
 
-		out := runAttribute
-
-		var slots, templates string
+		var slots string
 		beforeHandler := func(c *html.Node) (bool, error) {
 			if c.Type != html.ElementNode {
 				return true, nil
-			}
-
-			if c.Data == "template" {
-				tName := getXAttr(c.Attr, "name")
-				if len(tName) == 0 {
-					return false, errors.New("ERROR: invalid template syntax: 'name' attribute undefined")
-				}
-
-				templateBody, err := genChildes(getElChildes(c), nil, handler)
-				if err != nil {
-					return false, err
-				}
-
-				tTypes := getXAttr(c.Attr, "types")
-				if len(tName) != 0 {
-					tTypes = "\n" + tTypes + "\n"
-				}
-
-				templates = templates + `"` + tName + `": func(values ...interface{}) []interface{} {` + tTypes + `return []interface{} {` + templateBody + `} },`
-				return false, nil
 			}
 
 			slotAttr := getXAttr(c.Attr, "slot")
@@ -80,27 +59,21 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 		}
 
 		var external string
-
 		if len(body) != 0 {
 			external += "Body: []interface{}{" + body + "},"
 		}
-
 		if len(slots) != 0 {
 			external += "Slots: map[string]interface{}{" + slots + "},"
 		}
 
-		if len(templates) != 0 {
-			external += "Templates: map[string]gas.Template{" + templates + "},"
-		}
-
 		if len(t.Attr) > 1 { // not only "run" attribute
 			var attrsString string
-			for _, attr := range t.Attr {
-				if attr.Key == "run" {
+			for aKey, aVal := range info.Attrs {
+				if aKey == "run" {
 					continue
 				}
 
-				attrsString += `"` + attr.Key + `": "` + attr.Val + `",`
+				attrsString += `"` + aKey + `": "` + aVal + `",`
 			}
 			external += "Attrs: func() gas.Map { return gas.Map {" + attrsString + "} },"
 		}
@@ -115,14 +88,6 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 		}
 
 		return &ElementInfo{Tag: "e"}, out, nil
-	case "g-slot":
-		name := getXAttr(t.Attr, "name")
-		if len(name) == 0 {
-			return nil, "", errors.New("slot name is undefined")
-		}
-		return &ElementInfo{Tag: "g-slot"}, `e.Slots["` + name + `"]`, nil
-	case "g-body":
-		return &ElementInfo{Tag: "g-body"}, `gas.NE(&gas.E{}, e.Compile)`, nil
 	case "g-switch":
 		runAttribute := getXAttr(t.Attr, "run")
 		if len(runAttribute) == 0 {

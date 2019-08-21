@@ -11,8 +11,9 @@ import (
 )
 
 type HTMLCompiler struct {
-	onAttribute []func(key, val string, info *gasx.BlockInfo)
-	// TODO: Add onElement, on......
+	onAttribute   []func(key, val string, info *gasx.BlockInfo)
+	onNode        []func(*html.Node)
+	onElementInfo []func(*ElementInfo)
 }
 
 func NewCompiler() *HTMLCompiler {
@@ -23,6 +24,14 @@ func (c *HTMLCompiler) AddOnAttribute(f func(string, string, *gasx.BlockInfo)) {
 	c.onAttribute = append(c.onAttribute, f)
 }
 
+func (c *HTMLCompiler) AddOnNode(f func(*html.Node)) {
+	c.onNode = append(c.onNode, f)
+}
+
+func (c *HTMLCompiler) AddOnElementInfo(f func(*ElementInfo)) {
+	c.onElementInfo = append(c.onElementInfo, f)
+}
+
 type HTMLHandler struct {
 	info *gasx.BlockInfo
 	c    *HTMLCompiler
@@ -31,6 +40,18 @@ type HTMLHandler struct {
 func (handler *HTMLHandler) runOnAttribute(key, val string) {
 	for _, f := range handler.c.onAttribute {
 		f(key, val, handler.info)
+	}
+}
+
+func (handler *HTMLHandler) runOnNode(node *html.Node) {
+	for _, f := range handler.c.onNode {
+		f(node)
+	}
+}
+
+func (handler *HTMLHandler) runOnElementInfo(info *ElementInfo) {
+	for _, f := range handler.c.onElementInfo {
+		f(info)
 	}
 }
 

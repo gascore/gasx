@@ -1,139 +1,156 @@
 package acss
 
 import (
+	"fmt"
+	"math/rand"
 	"regexp"
 	"strings"
-	"github.com/gascore/gasx"
+	"time"
+
+	"github.com/gascore/gasx/html"
 )
 
 var styleRgxp = regexp.MustCompile(`([a-zA-Z]*)\((.*?)\)(:[a-z]|)(--([a-z]*)|)`)
 
 type Generator struct {
-	LockFile *gasx.LockFile
-	Styles   string
+	Styles string
 
 	Exceptions  []string
 	BreakPoints map[string]string
 	Custom      map[string]string
 }
 
-func (g *Generator) OnAttribute() func(string, string, *gasx.BlockInfo) {
-	if g.LockFile.BuildExternal {
-		g.LockFile.Body["acss"] = ""
-	}
+type acssStyle struct {
+	body        string
+	media       string
+	pseudoClass string
+}
 
-	generated := make(map[string]bool)
-
-	return func(key, val string, info *gasx.BlockInfo) {
-		if key != "class" {
+func (g *Generator) OnElementInfo() func(*html.ElementInfo) {
+	rand.Seed(time.Now().UnixNano())
+	return func(info *html.ElementInfo) {
+		acssAttr := info.Attrs["acss"]
+		if acssAttr == "" {
 			return
 		}
 
-		for _, class := range styleRgxp.FindAllString(val, -1) {
-			if generated[class] {
+		classID := "A" + randID(8)
+		id := fmt.Sprintf(".%s, [data-acss-id=\"%s\"]", classID, classID)
+		idWithP := func(p string) string {
+			return fmt.Sprintf(".%s:%s, [data-acss-id=\"%s\"]:%s", classID, p, classID, p)
+		}
+
+		type mediaVal struct {
+			basic  string
+			pseudo map[string]string
+		}
+
+		var basic string
+		media := make(map[string]mediaVal)
+		pseudo := make(map[string]string)
+		for _, class := range styleRgxp.FindAllString(acssAttr, -1) {
+			var pOperator string
+			if strings.Contains(class, ":") {
+				pIndex := strings.Index(class, ":")
+				pOperator = class[1+pIndex : 2+pIndex]
+				class = class[:pIndex] + class[2+pIndex:]
+
+				switch pOperator {
+				case "a":
+					pOperator = "active"
+					break
+				case "c":
+					pOperator = "checked"
+					break
+				case "f":
+					pOperator = "focus"
+					break
+				case "h":
+					pOperator = "hover"
+					break
+				case "d":
+					pOperator = "disabled"
+					break
+				}
+			}
+
+			var breakPoint string
+			if strings.Contains(class, "--") {
+				breakPoint = g.BreakPoints[class[strings.Index(class, "--")+len("--"):]]
+				class = class[:strings.Index(class, "--")]
+			}
+
+			styleValue := GenerateStyleForClass(class, g.Custom)
+			if len(styleValue) == 0 {
 				continue
 			}
 
-			generated[class] = true
-
-			if inArray(class, g.Exceptions) {
+			if pOperator == "" && breakPoint == "" {
+				basic += "\n\t" + styleValue
 				continue
 			}
 
-			classOut := g.buildClass(class)
-			if classOut == "" {
+			if pOperator != "" {
+				if breakPoint != "" {
+					mVal := media[breakPoint]
+					if mVal.pseudo == nil {
+						mVal.pseudo = make(map[string]string)
+					}
+					mVal.pseudo[pOperator] += "\n\t\t" + styleValue
+					media[breakPoint] = mVal
+					continue
+				}
+				pseudo[pOperator] += "\n\t" + styleValue
 				continue
 			}
 
-			g.Styles += classOut
-			if info.FileInfo.IsExternal {
-				g.LockFile.Body["acss"] += classOut
+			if breakPoint != "" {
+				mVal := media[breakPoint]
+				mVal.basic += "\n\t\t" + styleValue
+				media[breakPoint] = mVal
 			}
 		}
+
+		var outStyle string
+
+		// basic
+		outStyle += id + "{" + basic + "}\n"
+
+		// pseudo classes
+		for pKey, pVal := range pseudo {
+			outStyle += idWithP(pKey) + "{" + pVal + "}\n"
+		}
+
+		// media
+		for mKey, mVal := range media {
+			mStyles := id + "{" + mVal.basic + "}\n"
+			for pKey, pVal := range mVal.pseudo {
+				mStyles += idWithP(pKey) + "{" + pVal + "}\n"
+			}
+			outStyle += mKey + "{\n\t" + mStyles + "}\n"
+		}
+
+		info.Attrs["data-acss"] = info.Attrs["acss"]
+		delete(info.Attrs, "acss")
+		info.Attrs["data-acss-id"] = classID
+		info.Attrs["class"] += " " + classID
+
+		g.Styles += outStyle
 	}
 }
 
-func (g *Generator) buildClass(class string) string {
-	rawClass := class
+var letters = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 
-	var pOperator string
-	if strings.Contains(class, ":") {
-		pIndex := strings.Index(class, ":")
-		pOperator = class[1+pIndex : 2+pIndex]
-		class = class[:pIndex] + class[2+pIndex:]
-
-		switch pOperator {
-		case "a":
-			pOperator = "active"
-			break
-		case "c":
-			pOperator = "checked"
-			break
-		case "f":
-			pOperator = "focus"
-			break
-		case "h":
-			pOperator = "hover"
-			break
-		case "d":
-			pOperator = "disabled"
-			break
-		}
+func randID(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
 	}
-
-	var breakPoint string
-	if strings.Contains(class, "--") {
-		breakPoint = g.BreakPoints[class[strings.Index(class, "--")+len("--"):]]
-		class = class[:strings.Index(class, "--")]
-	}
-
-	styleValue := GenerateStyleForClass(class, g.Custom)
-	if len(styleValue) == 0 {
-		return ""
-	}
-
-	styleOut := "{\n" + styleValue + "\n}\n"
-	styleClass := "." + ClearClass(rawClass)
-	if len(pOperator) == 0 {
-		styleOut = styleClass + styleOut
-	} else {
-		styleOut = styleClass + ":" + pOperator + styleOut
-	}
-
-	if len(breakPoint) != 0 {
-		styleOut = breakPoint + " {\n" + styleOut + "}\n"
-	}
-
-	return styleOut
+	return string(b)
 }
 
 func (g *Generator) GetStyles() string {
-	if !g.LockFile.BuildExternal {
-		return g.Styles + "\n" + g.LockFile.Body["acss"]
-	}
+	// Some logic?
 
 	return g.Styles
-}
-
-func ClearClass(class string) string {
-	class = strings.Replace(class, "(", "\\(", -1)
-	class = strings.Replace(class, ")", "\\)", -1)
-	class = strings.Replace(class, ",", "\\,", -1)
-	class = strings.Replace(class, ":", "\\:", -1)
-	class = strings.Replace(class, "#", "\\#", -1)
-	class = strings.Replace(class, ".", "\\.", -1)
-	class = strings.Replace(class, "%", "\\%", -1)
-	class = strings.Replace(class, "!", "\\!", -1)
-
-	return class
-}
-
-func inArray(el string, arr []string) bool {
-	for _, x := range arr {
-		if x == el {
-			return true
-		}
-	}
-
-	return false
 }

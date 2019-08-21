@@ -89,10 +89,10 @@ func (info *ElementInfo) RenderHandlers() string {
 
 	var out string
 	for key, val := range info.Handlers {
-		out += `"` + key + `": func(e gas.Event) {` + val + `},`
+		out += `"` + key + `": func(e gas.Event) {` + val + ` },`
 	}
 
-	return `Handlers: map[string]gas.Handler{` + out + `},`
+	return `Handlers: map[string]gas.Handler{` + out + ` },`
 }
 
 // RenderAttrs generate Attrs for Element
@@ -119,7 +119,7 @@ func (info *ElementInfo) RenderHTMLDir() string {
 		return ""
 	}
 
-	return `HTML: gas.HTMLDirective{Render: func() string { return ` + info.HTMLRender + `},},`
+	return `HTML: func() string { return ` + info.HTMLRender + ` },`
 }
 
 // RenderIsPointer generate IsPointer for Element
@@ -196,6 +196,8 @@ func GetElementInfo(tag string, attrs []html.Attribute, handler HTMLHandler) *El
 			info.Attrs[aKey] = aVal
 		}
 	}
+
+	handler.runOnElementInfo(info)
 
 	return info
 }
