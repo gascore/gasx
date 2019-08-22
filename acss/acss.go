@@ -13,11 +13,21 @@ import (
 var styleRgxp = regexp.MustCompile(`([a-zA-Z]*)\((.*?)\)(:[a-z]|)(--([a-z]*)|)`)
 
 type Generator struct {
-	Styles string
+	Styles strings.Builder
 
 	Exceptions  []string
 	BreakPoints map[string]string
 	Custom      map[string]string
+}
+
+func (g *Generator) Init() {
+	if g.BreakPoints == nil {
+		g.BreakPoints = make(map[string]string)
+	}
+
+	if g.Custom == nil {
+		g.Custom = make(map[string]string)
+	}
 }
 
 type acssStyle struct {
@@ -41,13 +51,16 @@ func (g *Generator) OnElementInfo() func(*html.ElementInfo) {
 		}
 
 		type mediaVal struct {
-			basic  string
-			pseudo map[string]string
+			basic  strings.Builder
+			pseudo map[string]strings.Builder
 		}
 
-		var basic string
-		media := make(map[string]mediaVal)
-		pseudo := make(map[string]string)
+		var (
+			outStyles = strings.Builder{}
+			basic     = strings.Builder{}
+			media     = make(map[string]mediaVal)
+			pseudo    = make(map[string]strings.Builder)
+		)
 		for _, class := range styleRgxp.FindAllString(acssAttr, -1) {
 			var pOperator string
 			if strings.Contains(class, ":") {
@@ -86,7 +99,7 @@ func (g *Generator) OnElementInfo() func(*html.ElementInfo) {
 			}
 
 			if pOperator == "" && breakPoint == "" {
-				basic += "\n\t" + styleValue
+				basic.WriteString("\n\t" + styleValue)
 				continue
 			}
 
@@ -94,48 +107,56 @@ func (g *Generator) OnElementInfo() func(*html.ElementInfo) {
 				if breakPoint != "" {
 					mVal := media[breakPoint]
 					if mVal.pseudo == nil {
-						mVal.pseudo = make(map[string]string)
+						mVal.pseudo = make(map[string]strings.Builder)
 					}
-					mVal.pseudo[pOperator] += "\n\t\t" + styleValue
+
+					p := mVal.pseudo[pOperator]
+					p.WriteString("\n\t\t" + styleValue)
+					mVal.pseudo[pOperator] = p
+
 					media[breakPoint] = mVal
+
 					continue
 				}
-				pseudo[pOperator] += "\n\t" + styleValue
+
+				p := pseudo[pOperator]
+				p.WriteString("\n\t" + styleValue)
+				pseudo[pOperator] = p
+
 				continue
 			}
 
 			if breakPoint != "" {
 				mVal := media[breakPoint]
-				mVal.basic += "\n\t\t" + styleValue
+				mVal.basic.WriteString("\n\t\t" + styleValue)
 				media[breakPoint] = mVal
 			}
 		}
 
-		var outStyle string
-
 		// basic
-		outStyle += id + "{" + basic + "}\n"
+		outStyles.WriteString(id + "{" + basic.String() + "}\n")
 
 		// pseudo classes
 		for pKey, pVal := range pseudo {
-			outStyle += idWithP(pKey) + "{" + pVal + "}\n"
+			outStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "}\n")
 		}
 
 		// media
 		for mKey, mVal := range media {
-			mStyles := id + "{" + mVal.basic + "}\n"
+			mStyles := strings.Builder{}
+			mStyles.WriteString(id + "{" + mVal.basic.String() + "}\n")
 			for pKey, pVal := range mVal.pseudo {
-				mStyles += idWithP(pKey) + "{" + pVal + "}\n"
+				mStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "}\n")
 			}
-			outStyle += mKey + "{\n\t" + mStyles + "}\n"
+			outStyles.WriteString(mKey + "{\n\t" + mStyles.String() + "}\n")
 		}
 
-		info.Attrs["data-acss"] = info.Attrs["acss"]
 		delete(info.Attrs, "acss")
+		info.Attrs["data-acss"] = acssAttr
 		info.Attrs["data-acss-id"] = classID
 		info.Attrs["class"] += " " + classID
 
-		g.Styles += outStyle
+		g.Styles.WriteString(outStyles.String())
 	}
 }
 
@@ -152,5 +173,8 @@ func randID(n int) string {
 func (g *Generator) GetStyles() string {
 	// Some logic?
 
-	return g.Styles
+	out := g.Styles.String()
+	g.Styles.Reset()
+
+	return out
 }

@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"strings"
+	"path/filepath"
 
 	"github.com/fatih/color"
 	copyPkg "github.com/otiai10/copy"
@@ -12,8 +14,6 @@ import (
 
 // Builder GOS files builder
 type Builder struct {
-	LockFile *LockFile
-
 	// BlockCompilers pipeline of special blocks compilers
 	BlockCompilers []BlockCompiler
 }
@@ -31,8 +31,6 @@ type BlockInfo struct {
 
 	// FileBytes full GOS file value
 	FileBytes string
-
-	LockFile *LockFile
 }
 
 // BlockCompiler node for render pipeline
@@ -83,6 +81,11 @@ func NewFile(path, body string) {
 	Must(ioutil.WriteFile(path, []byte(body), 0644))
 }
 
+// DeleteFile delete file
+func DeleteFile(path string) {
+	Must(os.Remove(path))
+}
+
 // CopyFile copy file from pathA to file in pathB
 func CopyFile(pathA, pathB string) {
 	file, err := ioutil.ReadFile(pathA)
@@ -129,4 +132,48 @@ func InArrayString(a string, arr []string) bool {
 	}
 
 	return false
+}
+
+// FilesByPattern return files path matched by mattern in directory
+func FilesByPattern(dir string, pattern string) ([]string, error) {
+	var matched []string
+	pattern = dir+"/"+pattern
+	err := filepath.Walk(dir+"/", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("cannot access path %q: %s\n", path, err.Error())
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		pathIsMatched, err := filepath.Match(pattern, path)
+		if err != nil {
+			return fmt.Errorf("error matching path: %s", err.Error())
+		}
+
+		if pathIsMatched {
+			matched = append(matched, path)
+		}
+		
+		return nil
+	})
+	if err != nil {
+		return []string{}, fmt.Errorf("error walking the path %q: %s\n", dir, err.Error())
+	}
+
+	return matched, nil
+}
+
+func UniteFilesByPaths(paths []string) (string, error) {
+	outFile := strings.Builder{}
+	for _, path := range paths {
+		fileFromPath, err := ioutil.ReadFile(path)
+		if err != nil {
+			return "", fmt.Errorf("cannot open file: \"%s\": %s", path, err.Error())
+		}
+
+		outFile.Write(fileFromPath)
+	}
+	return outFile.String(), nil
 }
