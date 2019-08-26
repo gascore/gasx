@@ -64,6 +64,7 @@ func (g *Generator) GenCSS(classID, acssAttr string) string {
 
 	type mediaVal struct {
 		basic  strings.Builder
+		keys   []string
 		pseudo map[string]strings.Builder
 	}
 
@@ -73,6 +74,8 @@ func (g *Generator) GenCSS(classID, acssAttr string) string {
 		media     = make(map[string]mediaVal)
 		pseudo    = make(map[string]strings.Builder)
 	)
+
+	var mKeys, pKeys []string
 
 	for _, class := range styleRgxp.FindAllString(acssAttr, -1) {
 		var pOperator string
@@ -118,12 +121,20 @@ func (g *Generator) GenCSS(classID, acssAttr string) string {
 
 		if pOperator != "" {
 			if breakPoint != "" {
-				mVal := media[breakPoint]
+				mVal, ok := media[breakPoint]
+				if !ok {
+					mKeys = append(mKeys, breakPoint)
+				}
+
 				if mVal.pseudo == nil {
 					mVal.pseudo = make(map[string]strings.Builder)
 				}
 
-				p := mVal.pseudo[pOperator]
+				p, ok := mVal.pseudo[pOperator]
+				if !ok {
+					mVal.keys = append(mVal.keys, pOperator)
+				}
+
 				p.WriteString("\n\t\t" + styleValue)
 				mVal.pseudo[pOperator] = p
 
@@ -132,7 +143,11 @@ func (g *Generator) GenCSS(classID, acssAttr string) string {
 				continue
 			}
 
-			p := pseudo[pOperator]
+			p, ok := pseudo[pOperator]
+			if !ok {
+				pKeys = append(pKeys, pOperator)
+			}
+
 			p.WriteString("\n\t" + styleValue)
 			pseudo[pOperator] = p
 
@@ -140,7 +155,11 @@ func (g *Generator) GenCSS(classID, acssAttr string) string {
 		}
 
 		if breakPoint != "" {
-			mVal := media[breakPoint]
+			mVal, ok := media[breakPoint]
+			if !ok {
+				mKeys = append(mKeys, breakPoint)
+			}
+
 			mVal.basic.WriteString("\n\t\t" + styleValue)
 			media[breakPoint] = mVal
 		}
@@ -150,15 +169,18 @@ func (g *Generator) GenCSS(classID, acssAttr string) string {
 	outStyles.WriteString(id + "{" + basic.String() + "\n}\n")
 
 	// pseudo classes
-	for pKey, pVal := range pseudo {
+	for _, pKey := range pKeys {
+		pVal := pseudo[pKey]
 		outStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "\n}\n")
 	}
 
 	// media
-	for mKey, mVal := range media {
+	for _, mKey := range mKeys {
+		mVal := media[mKey]
 		mStyles := strings.Builder{}
 		mStyles.WriteString(id + "{" + mVal.basic.String() + "\t\n}\n")
-		for pKey, pVal := range mVal.pseudo {
+		for _, pKey := range mVal.keys {
+			pVal := mVal.pseudo[pKey]
 			mStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "\t\t\n}\n")
 		}
 		outStyles.WriteString(mKey + "{\n\t" + mStyles.String() + "\t\n}\n")
