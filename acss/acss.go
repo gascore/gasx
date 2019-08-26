@@ -10,7 +10,7 @@ import (
 	"github.com/gascore/gasx/html"
 )
 
-var styleRgxp = regexp.MustCompile(`([a-zA-Z]*)\((.*?)\)(:[a-z]|)(--([a-z]*)|)`)
+var styleRgxp = regexp.MustCompile(`([a-zA-Z]*){(.*?)}(:[a-z]*|)(@([a-z]*)|)`)
 
 type Generator struct {
 	Styles strings.Builder
@@ -44,120 +44,127 @@ func (g *Generator) OnElementInfo() func(*html.ElementInfo) {
 			return
 		}
 
-		classID := "A" + randID(8)
-		id := fmt.Sprintf(".%s, [data-acss-id=\"%s\"]", classID, classID)
-		idWithP := func(p string) string {
-			return fmt.Sprintf(".%s:%s, [data-acss-id=\"%s\"]:%s", classID, p, classID, p)
-		}
-
-		type mediaVal struct {
-			basic  strings.Builder
-			pseudo map[string]strings.Builder
-		}
-
-		var (
-			outStyles = strings.Builder{}
-			basic     = strings.Builder{}
-			media     = make(map[string]mediaVal)
-			pseudo    = make(map[string]strings.Builder)
-		)
-		for _, class := range styleRgxp.FindAllString(acssAttr, -1) {
-			var pOperator string
-			if strings.Contains(class, ":") {
-				pIndex := strings.Index(class, ":")
-				pOperator = class[1+pIndex : 2+pIndex]
-				class = class[:pIndex] + class[2+pIndex:]
-
-				switch pOperator {
-				case "a":
-					pOperator = "active"
-					break
-				case "c":
-					pOperator = "checked"
-					break
-				case "f":
-					pOperator = "focus"
-					break
-				case "h":
-					pOperator = "hover"
-					break
-				case "d":
-					pOperator = "disabled"
-					break
-				}
-			}
-
-			var breakPoint string
-			if strings.Contains(class, "--") {
-				breakPoint = g.BreakPoints[class[strings.Index(class, "--")+len("--"):]]
-				class = class[:strings.Index(class, "--")]
-			}
-
-			styleValue := GenerateStyleForClass(class, g.Custom)
-			if len(styleValue) == 0 {
-				continue
-			}
-
-			if pOperator == "" && breakPoint == "" {
-				basic.WriteString("\n\t" + styleValue)
-				continue
-			}
-
-			if pOperator != "" {
-				if breakPoint != "" {
-					mVal := media[breakPoint]
-					if mVal.pseudo == nil {
-						mVal.pseudo = make(map[string]strings.Builder)
-					}
-
-					p := mVal.pseudo[pOperator]
-					p.WriteString("\n\t\t" + styleValue)
-					mVal.pseudo[pOperator] = p
-
-					media[breakPoint] = mVal
-
-					continue
-				}
-
-				p := pseudo[pOperator]
-				p.WriteString("\n\t" + styleValue)
-				pseudo[pOperator] = p
-
-				continue
-			}
-
-			if breakPoint != "" {
-				mVal := media[breakPoint]
-				mVal.basic.WriteString("\n\t\t" + styleValue)
-				media[breakPoint] = mVal
-			}
-		}
-
-		// basic
-		outStyles.WriteString(id + "{" + basic.String() + "}\n")
-
-		// pseudo classes
-		for pKey, pVal := range pseudo {
-			outStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "}\n")
-		}
-
-		// media
-		for mKey, mVal := range media {
-			mStyles := strings.Builder{}
-			mStyles.WriteString(id + "{" + mVal.basic.String() + "}\n")
-			for pKey, pVal := range mVal.pseudo {
-				mStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "}\n")
-			}
-			outStyles.WriteString(mKey + "{\n\t" + mStyles.String() + "}\n")
-		}
-
+		classID   := "A" + randID(8)
+		outStyles := g.GenCSS(classID, acssAttr)
+		
 		delete(info.Attrs, "acss")
 		info.Attrs["data-acss"] = acssAttr
 		info.Attrs["data-acss-id"] = classID
 		info.Attrs["class"] += " " + classID
 
-		g.Styles.WriteString(outStyles.String())
+		g.Styles.WriteString(outStyles)
 	}
+}
+
+func (g *Generator) GenCSS(classID, acssAttr string) string {
+	id := fmt.Sprintf(".%s, [data-acss-id=\"%[1]s\"] ", classID)
+	idWithP := func(p string) string {
+		return fmt.Sprintf(".%s:%s, [data-acss-id=\"%[1]s\"]:%[2]s ", classID, p)
+	}
+
+	type mediaVal struct {
+		basic  strings.Builder
+		pseudo map[string]strings.Builder
+	}
+
+	var (
+		outStyles = strings.Builder{}
+		basic     = strings.Builder{}
+		media     = make(map[string]mediaVal)
+		pseudo    = make(map[string]strings.Builder)
+	)
+
+	for _, class := range styleRgxp.FindAllString(acssAttr, -1) {
+		var pOperator string
+		if strings.Contains(class, ":") {
+			pIndex := strings.Index(class, ":")
+			pOperator = class[1+pIndex : 2+pIndex]
+			class = class[:pIndex] + class[2+pIndex:]
+
+			switch pOperator {
+			case "a", "active":
+				pOperator = "active"
+				break
+			case "c", "checked":
+				pOperator = "checked"
+				break
+			case "f", "focus":
+				pOperator = "focus"
+				break
+			case "h", "hover":
+				pOperator = "hover"
+				break
+			case "d", "disabled":
+				pOperator = "disabled"
+				break
+			}
+		}
+
+		var breakPoint string
+		if strings.Contains(class, "@") {
+			breakPoint = g.BreakPoints[class[strings.Index(class, "@")+len("@"):]]
+			class = class[:strings.Index(class, "@")]
+		}
+
+		styleValue := GenerateStyleForClass(class, g.Custom)
+		if len(styleValue) == 0 {
+			continue
+		}
+
+		if pOperator == "" && breakPoint == "" {
+			basic.WriteString("\n\t" + styleValue)
+			continue
+		}
+
+		if pOperator != "" {
+			if breakPoint != "" {
+				mVal := media[breakPoint]
+				if mVal.pseudo == nil {
+					mVal.pseudo = make(map[string]strings.Builder)
+				}
+
+				p := mVal.pseudo[pOperator]
+				p.WriteString("\n\t\t" + styleValue)
+				mVal.pseudo[pOperator] = p
+
+				media[breakPoint] = mVal
+
+				continue
+			}
+
+			p := pseudo[pOperator]
+			p.WriteString("\n\t" + styleValue)
+			pseudo[pOperator] = p
+
+			continue
+		}
+
+		if breakPoint != "" {
+			mVal := media[breakPoint]
+			mVal.basic.WriteString("\n\t\t" + styleValue)
+			media[breakPoint] = mVal
+		}
+	}
+
+	// basic
+	outStyles.WriteString(id + "{" + basic.String() + "\n}\n")
+
+	// pseudo classes
+	for pKey, pVal := range pseudo {
+		outStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "\n}\n")
+	}
+
+	// media
+	for mKey, mVal := range media {
+		mStyles := strings.Builder{}
+		mStyles.WriteString(id + "{" + mVal.basic.String() + "\t\n}\n")
+		for pKey, pVal := range mVal.pseudo {
+			mStyles.WriteString(idWithP(pKey) + "{" + pVal.String() + "\t\t\n}\n")
+		}
+		outStyles.WriteString(mKey + "{\n\t" + mStyles.String() + "\t\n}\n")
+	}
+
+	return outStyles.String()
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyz0123456789")

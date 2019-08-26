@@ -6,14 +6,12 @@ import (
 )
 
 func GenerateStyleForClass(class string, custom map[string]string) string {
-	cDots := strings.Contains(class, ":")
-	cC := strings.Contains(class, "(")
-	if !(cC || cDots) {
+	if !(strings.Contains(class, ":") || strings.Contains(class, "@") || strings.Contains(class, "{") || strings.Contains(class, "}")) {
 		return ""
 	}
 
-	bi := strings.Index(class, "(")
-	value := strings.Replace(class[bi+1:strings.Index(class, ")")], ",", " ", -1)
+	bi    := strings.Index(class, "{")
+	value := class[bi+1:strings.Index(class, "}")]
 	class = class[:bi]
 
 	if len(custom[value]) != 0 {
