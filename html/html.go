@@ -80,13 +80,10 @@ func (c *HTMLCompiler) Block() gasx.BlockCompiler {
 			return "", fmt.Errorf("error while compiling html nodes")
 		}
 
-		if info.Name == "htmlEl" { // $htmlEl
-			return strings.TrimSuffix(out, ","), nil
-		}
+		out = strings.TrimSuffix(out, ",") // $html
 
-		out = "gas.CL(" + out + ")" // $html
-		if info.Name == "htmlF" {   // $htmlF
-			return "func() []interface{} {return " + out + "}", nil
+		if info.Name == "htmlF" { // $htmlF
+			out = "func() *gas.E {return " + out + "}"
 		}
 
 		return out, nil

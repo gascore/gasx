@@ -60,7 +60,7 @@ func executeEl(t *html.Node, handler HTMLHandler) (*ElementInfo, string, error) 
 
 		var external string
 		if len(body) != 0 {
-			external += "Body: []interface{}{" + body + "},"
+			external += "Body: gas.UnSpliceBody(gas.CL(" + body + ")),"
 		}
 		if len(slots) != 0 {
 			external += "Slots: map[string]interface{}{" + slots + "},"
