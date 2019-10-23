@@ -475,7 +475,7 @@ const execScript = `// Copyright 2018 The Go Authors. All rights reserved.
 			const keys = Object.keys(this.env).sort();
 			argvPtrs.push(keys.length);
 			keys.forEach((key) => {
-				argvPtrs.push(strPtr(`${key}=${this.env[key]}`));
+				argvPtrs.push(strPtr(` + "`" + `${key}=${this.env[key]}` + "`" + `));
 			});
 
 			const argv = offset;
