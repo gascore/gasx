@@ -69,7 +69,14 @@ type ElementInfo struct {
 
 // BuildBody return string with gas element strucutre
 func (info *ElementInfo) BuildBody() string {
-	return `&gas.E{Tag:"` + info.Tag + `", ` + info.RenderHandlers() + info.RenderAttrs() + info.RenderHTMLDir() + info.RenderRef() + info.RenderIsPointer() + `},`
+	return `&gas.E{` +
+		`Tag:"` + info.Tag + `", ` +
+		info.RenderHandlers() +
+		info.RenderAttrs() +
+		info.RenderHTMLDir() +
+		info.RenderRef() +
+		info.RenderIsPointer() +
+		`},`
 }
 
 // RenderRef return RefName for Element
@@ -103,7 +110,7 @@ func (info *ElementInfo) RenderAttrs() string {
 
 	var out string
 	for key, val := range info.Attrs {
-		out += `"` + key + `": "` + val + `",`
+		out += `"` + key + `": "` + strings.Replace(val, `"`, `\"`, -1) + `",`
 	}
 
 	for key, val := range info.Binds {
